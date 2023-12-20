@@ -2,18 +2,31 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"log"
 	"net"
 	"os"
 
 	"github.com/MikeZappa87/kni-api/pkg/apis/runtime/beta"
 	cniservice "github.com/mikezappa87/kni-network-runtime/pkg/cni-service"
 
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
+func init() {
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&log.JSONFormatter{})
+  
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.SetOutput(os.Stdout)
+  
+	// Only log the warning severity or above.
+	log.SetLevel(log.DebugLevel)
+  }
+
 func main() {
+	log.Info("network runtime started")
+
 	var cmd, protocol, sockAddr string
 
 	flag.StringVar(&cmd, "cmd", "cni", "backend")
@@ -36,7 +49,7 @@ func main() {
 
 	server := grpc.NewServer()
 
-	kni, err := cniservice.NewKniService()
+	kni, err := cniservice.NewKniService("eth", "net.db")
 
 	if err != nil {
 		log.Fatal(err)
@@ -45,7 +58,7 @@ func main() {
 
 	beta.RegisterKNIServer(server, kni)
 
-	fmt.Println("Running")
+	log.Info("kni network runtime is running")
 
 	server.Serve(listener)
 }

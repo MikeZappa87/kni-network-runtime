@@ -1,0 +1,9 @@
+version: "3"
+
+tasks:
+  run-server:
+    cmds:
+      - go run cmd/server/server.go -cmd "cni"
+  build-server:
+    cmds:
+      - CGO_ENABLED=0 go build -o ./bin/server cmd/server/server.go

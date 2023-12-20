@@ -8,6 +8,7 @@ import (
 
 	"github.com/MikeZappa87/kni-api/pkg/apis/runtime/beta"
 	"github.com/containerd/go-cni"
+	log "github.com/sirupsen/logrus"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -18,9 +19,11 @@ type KniService struct {
 
 const PodBucket = "pod"
 
-func NewKniService() (beta.KNIServer, error) {
+func NewKniService(ifprefix, dbname string) (beta.KNIServer, error) {
+	log.Info("starting kni network runtime service")
+	
 	opts := []cni.Opt{
-		cni.WithInterfacePrefix("eth"),
+		cni.WithInterfacePrefix(ifprefix),
 		 cni.WithDefaultConf,
 		 cni.WithLoNetwork} 
 	
@@ -30,10 +33,12 @@ func NewKniService() (beta.KNIServer, error) {
 		return nil, err
 	}
 	
-	db, err := bolt.Open("net.db", 0600, nil)
+	db, err := bolt.Open(dbname, 0600, nil)
 	if err != nil {
   		return nil, err
 	}
+
+	log.Info("boltdb connection is open")
 
 	kni := &KniService{
 		c: cni,
@@ -48,6 +53,8 @@ func NewKniService() (beta.KNIServer, error) {
 
 	err = kni.c.Load(opts...)
 
+	log.Info("cni has been loaded")
+
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +66,8 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 	//This is nice. In the container runtime if you want to add one you need to contribute this to the container runtime
 	//This way you are in complete control. Better capability support with KNI -> CNI
 	
+	log.Infof("attach rpc request for id %s", req.Id)
+
 	opts := []cni.NamespaceOpts{
 		cni.WithArgs("IgnoreUnknown", "1"),
 		cni.WithLabels(req.Labels),
@@ -66,18 +75,22 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 		cni.WithLabels(req.Metadata),
 	}
 
-	if val, ok := req.Annotations["netns"]; ok {
-		fmt.Printf("annotations netns: %s\n", val)
+	if req.Isolation == nil {
+		return &beta.AttachNetworkResponse{}, nil
+	}
+
+	if req.Isolation.Path != "" {
+		log.Infof("pod annotation id: %s netns: %s\n", req.Id, req.Isolation.Path)
+	} else {
+		log.Info("no network namespace path, this is either a bug or its running in the root")
+		return &beta.AttachNetworkResponse{
+		}, nil
 	}
 	
-	fmt.Printf("id: %s netns: %s\n", req.Id, req.Isolation.Path)
-
 	res, err := k.c.SetupSerially(ctx, req.Id, req.Isolation.Path, opts...)
 
-	fmt.Println("ATTACH RECEIVED")
-
 	if err != nil {
-		fmt.Println(fmt.Errorf("issue attaching with cni: %s",err.Error()))
+		log.Errorf("unable to execute CNI ADD: %s",err.Error())
 
 		return nil, err
 	}
@@ -91,9 +104,10 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 
 		for _, v := range outv.IPConfigs {
 			data.Ip = append(data.Ip, v.IP.String())
-			fmt.Printf("interface: %s ip: %s\n", outk, v.IP.String())
 		}
 	}
+
+	log.WithField("ipconfigs", ip).Info("cni add executed")
 
 	err = k.store.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists([]byte(PodBucket))
@@ -115,7 +129,7 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 	})
 	
 	if err != nil {
-		fmt.Println(fmt.Errorf("issue attaching with json marshalling: %s",err.Error()))
+		log.Errorf("unable to save record for id: %s: %s", req.Id, err.Error())
 		return nil, err
 	}
 
@@ -126,6 +140,8 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 
 func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkRequest) (*beta.DetachNetworkResponse, error) {
 	
+	log.Infof("detach rpc request for id %s", req.Id)
+
 	opts := []cni.NamespaceOpts{
 		cni.WithArgs("IgnoreUnknown", "1"),
 		cni.WithLabels(req.Labels),
@@ -137,12 +153,18 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 		return &beta.DetachNetworkResponse{}, nil
 	}
 
-	fmt.Printf("id: %s netns: %s\n", req.Id, req.Isolation.Path)
-	
+	if req.Isolation.Path != "" {
+		log.Infof("pod annotation id: %s netns: %s\n", req.Id, req.Isolation.Path)
+	} else {
+		log.Info("no network namespace path, this is either a bug or its running in the root")
+		return &beta.DetachNetworkResponse{
+		}, nil
+	}
+
 	err := k.c.Remove(ctx, req.Id, req.Isolation.Path, opts...)
 
 	if err != nil {
-		fmt.Println(fmt.Errorf("issue detaching with cni: %s",err.Error()))
+		log.Errorf("unable to execute CNI DEL: %s",err.Error())
 
 		return nil, err
 	}
@@ -158,10 +180,10 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 	})
 
 	if err != nil {
+		log.Errorf("unable to delete record id: %s %v", req.Id, err)
+
 		return nil, err
 	}
-
-	fmt.Println("DETACH RECEIVED")
 
 	return &beta.DetachNetworkResponse{}, nil
 }
@@ -174,6 +196,8 @@ func (k *KniService) SetupNodeNetwork(context.Context, *beta.SetupNodeNetworkReq
 
 func (k *KniService) QueryPodNetwork(ctx context.Context,req *beta.QueryPodNetworkRequest) (*beta.QueryPodNetworkResponse, error) {
 	
+	log.Infof("query pod rpc request id: %s", req.Id)
+
 	data := make(map[string]*beta.IPConfig)
 	
 	err := k.store.View(func(tx *bolt.Tx) error {
@@ -197,6 +221,8 @@ func (k *KniService) QueryPodNetwork(ctx context.Context,req *beta.QueryPodNetwo
 
 		return nil
 	})
+
+	log.Infof("ipconfigs received for id: %s ip: %s", req.Id, data)
 
 	if err != nil {
 		return nil, err
