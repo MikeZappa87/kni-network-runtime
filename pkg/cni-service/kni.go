@@ -142,13 +142,6 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 	
 	log.Infof("detach rpc request for id %s", req.Id)
 
-	opts := []cni.NamespaceOpts{
-		cni.WithArgs("IgnoreUnknown", "1"),
-		cni.WithLabels(req.Labels),
-		cni.WithLabels(req.Annotations),
-		cni.WithLabels(req.Metadata),
-	}
-
 	if req.Isolation == nil {
 		return &beta.DetachNetworkResponse{}, nil
 	}
@@ -159,6 +152,13 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 		log.Info("no network namespace path, this is either a bug or its running in the root")
 		return &beta.DetachNetworkResponse{
 		}, nil
+	}
+
+	opts := []cni.NamespaceOpts{
+		cni.WithArgs("IgnoreUnknown", "1"),
+		cni.WithLabels(req.Labels),
+		cni.WithLabels(req.Annotations),
+		cni.WithLabels(req.Metadata),
 	}
 
 	err := k.c.Remove(ctx, req.Id, req.Isolation.Path, opts...)
