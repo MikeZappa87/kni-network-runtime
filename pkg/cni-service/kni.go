@@ -234,5 +234,26 @@ func (k *KniService) QueryPodNetwork(ctx context.Context,req *beta.QueryPodNetwo
 }
 
 func (k *KniService) QueryNodeNetworks(ctx context.Context, req *beta.QueryNodeNetworksRequest) (*beta.QueryNodeNetworksResponse, error) {
-	return nil, nil
+	networks := []*beta.Network{}
+
+	if err := k.c.Status(); err != nil {
+		networks = append(networks, &beta.Network{
+			Name: "default",
+			Ready: false,
+			Metadata: map[string]string{},
+		})
+
+		return &beta.QueryNodeNetworksResponse{
+			Networks: networks,
+		}, nil
+	} else {
+		networks = append(networks, &beta.Network{
+			Name: "default",
+			Ready: true,
+		})
+	}
+
+	return &beta.QueryNodeNetworksResponse{
+		Networks: networks,
+	}, nil
 }
