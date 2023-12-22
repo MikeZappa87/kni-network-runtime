@@ -72,7 +72,7 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 		cni.WithArgs("IgnoreUnknown", "1"),
 		cni.WithLabels(req.Labels),
 		cni.WithLabels(req.Annotations),
-		cni.WithLabels(req.Metadata),
+		cni.WithLabels(req.Extradata),
 	}
 
 	if req.Isolation == nil {
@@ -158,7 +158,7 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 		cni.WithArgs("IgnoreUnknown", "1"),
 		cni.WithLabels(req.Labels),
 		cni.WithLabels(req.Annotations),
-		cni.WithLabels(req.Metadata),
+		cni.WithLabels(req.Extradata),
 	}
 
 	err := k.c.Remove(ctx, req.Id, req.Isolation.Path, opts...)
@@ -240,7 +240,7 @@ func (k *KniService) QueryNodeNetworks(ctx context.Context, req *beta.QueryNodeN
 		networks = append(networks, &beta.Network{
 			Name: "default",
 			Ready: false,
-			Metadata: map[string]string{},
+			Extradata: map[string]string{},
 		})
 
 		return &beta.QueryNodeNetworksResponse{
