@@ -17,6 +17,11 @@ type KniService struct {
 	store *bolt.DB
 }
 
+type attachStore struct {
+	IP map[string]*beta.IPConfig
+	Annotations map[string]string
+}
+
 const PodBucket = "pod"
 
 func NewKniService(ifprefix, dbname string) (beta.KNIServer, error) {
@@ -95,6 +100,11 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 		return nil, err
 	}
 
+	store := attachStore{
+		IP: make(map[string]*beta.IPConfig),
+		Annotations: map[string]string{},
+	}
+
 	ip := make(map[string]*beta.IPConfig)
 
 	for outk, outv := range res.Interfaces {
@@ -106,6 +116,9 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 			data.Ip = append(data.Ip, v.IP.String())
 		}
 	}
+
+	store.Annotations = req.Annotations
+	store.IP = ip
 
 	log.WithField("ipconfigs", ip).Info("cni add executed")
 
@@ -119,7 +132,7 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 			return err
 		}
 
-		js, err := json.Marshal(ip)
+		js, err := json.Marshal(store)
 
 		if err != nil {
 			return err
@@ -142,18 +155,6 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 	
 	log.Infof("detach rpc request for id %s", req.Id)
 
-	if req.Isolation == nil {
-		return &beta.DetachNetworkResponse{}, nil
-	}
-
-	if req.Isolation.Path != "" {
-		log.Infof("pod annotation id: %s netns: %s\n", req.Id, req.Isolation.Path)
-	} else {
-		log.Info("no network namespace path, this is either a bug or its running in the root")
-		return &beta.DetachNetworkResponse{
-		}, nil
-	}
-
 	opts := []cni.NamespaceOpts{
 		cni.WithArgs("IgnoreUnknown", "1"),
 		cni.WithLabels(req.Labels),
@@ -161,10 +162,40 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 		cni.WithLabels(req.Extradata),
 	}
 
-	err := k.c.Remove(ctx, req.Id, req.Isolation.Path, opts...)
+	err := k.store.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(PodBucket))
+		
+		if b == nil {
+			return errors.New("bucket not created")
+		}
+
+		v := b.Get([]byte(req.Id))
+
+		if v == nil {
+			return nil
+		}
+
+		data := attachStore{}
+		
+		err := json.Unmarshal(v, &data)
+
+		if err != nil {
+			return err
+		}
+
+		err = k.c.Remove(ctx, req.Id, data.Annotations["netns"], opts...)
+
+		if err != nil {
+			log.Errorf("unable to execute CNI DEL: %s",err.Error())
+
+			return err
+		}
+
+		return nil
+	})
 
 	if err != nil {
-		log.Errorf("unable to execute CNI DEL: %s",err.Error())
+		log.Errorf("unable to execute CNI DEL: %s %v", req.Id, err)
 
 		return nil, err
 	}
@@ -198,7 +229,7 @@ func (k *KniService) QueryPodNetwork(ctx context.Context,req *beta.QueryPodNetwo
 	
 	log.Infof("query pod rpc request id: %s", req.Id)
 
-	data := make(map[string]*beta.IPConfig)
+	data := attachStore{}
 	
 	err := k.store.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(PodBucket))
@@ -222,14 +253,14 @@ func (k *KniService) QueryPodNetwork(ctx context.Context,req *beta.QueryPodNetwo
 		return nil
 	})
 
-	log.Infof("ipconfigs received for id: %s ip: %s", req.Id, data)
+	log.Infof("ipconfigs received for id: %s ip: %s", req.Id, data.IP)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &beta.QueryPodNetworkResponse{
-		Ipconfigs: data,
+		Ipconfigs: data.IP,
 	}, nil
 }
 
