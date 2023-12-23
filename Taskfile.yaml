@@ -6,4 +6,4 @@ tasks:
       - go run cmd/server/server.go -cmd "cni"
   build-server:
     cmds:
-      - CGO_ENABLED=0 go build -o ./bin/server cmd/server/server.go
+      - CGO_ENABLED=0 go build -o ./bin/network-runtime cmd/server/server.go
