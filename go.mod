@@ -12,6 +12,7 @@ require (
 
 require (
 	github.com/containernetworking/cni v1.1.2 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/onsi/ginkgo/v2 v2.6.1 // indirect

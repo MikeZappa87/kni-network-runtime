@@ -56,13 +56,19 @@ func NewKniService(ifprefix, dbname string) (beta.KNIServer, error) {
 		return nil
 	})
 
-	err = kni.c.Load(opts...)
+	kni.c.Load(opts...)
 
-	log.Info("cni has been loaded")
+	sync, err := newCNINetConfSyncer("/etc/cni/net.d", cni, opts)
 
 	if err != nil {
 		return nil, err
-	}
+  	}
+
+	go func() {
+		sync.syncLoop()
+	}()
+
+	log.Info("cni has been loaded")
 
 	return kni, nil
 }
@@ -252,6 +258,11 @@ func (k *KniService) QueryPodNetwork(ctx context.Context,req *beta.QueryPodNetwo
 
 		return nil
 	})
+
+	if data.IP == nil {
+		return &beta.QueryPodNetworkResponse{
+		}, nil
+	}
 
 	log.Infof("ipconfigs received for id: %s ip: %s", req.Id, data.IP)
 
