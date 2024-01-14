@@ -360,7 +360,7 @@ func (k *KniService) RemoveMultipleNetworks(ctx context.Context, req *beta.Detac
 
 	opts := []cni.NamespaceOpts{}
 
-	err = k.c.RemoveNetworks(ctx, req.Id, req.Isolation.Path, networks, opts...)
+	err = k.c.RemoveNetworks(ctx, req.Id, req.Annotations["netns"], networks, opts...)
 
 	if err != nil {
 		return nil
