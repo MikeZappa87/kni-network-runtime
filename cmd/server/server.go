@@ -26,6 +26,8 @@ func init() {
 
 var cmd, protocol, sockAddr, ifprefix, dbname string
 
+var UseMultiNet bool
+
 const DEFAULT_IFPREFIX = "eth"
 const DEFAULT_DBNAME = "net.db"
 
@@ -37,6 +39,7 @@ func main() {
 	flag.StringVar(&sockAddr, "address", "/tmp/kni.sock", "socket address")
 	flag.StringVar(&ifprefix, "ifprefix", "eth", "interface prefix")
 	flag.StringVar(&dbname, "dbname", "net.db", "boltdb file name")
+	flag.BoolVar(&UseMultiNet, "usemultinet", true, "use multi network features")
 
 	flag.Parse()
 
@@ -70,7 +73,13 @@ func run() error {
 
 	server := grpc.NewServer()
 
-	kni, err := cniservice.NewKniService(ifprefix, dbname)
+	config := cniservice.KNIConfig{
+		IfPrefix:    ifprefix,
+		Db:          dbname,
+		UseMultiNet: UseMultiNet,
+	}
+
+	kni, err := cniservice.NewKniService(&config)
 
 	if err != nil {
 		log.Fatal(err)
