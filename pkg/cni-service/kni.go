@@ -35,11 +35,15 @@ func NewKniService(config *KNIConfig) (beta.KNIServer, error) {
 	log.Info("starting kni network runtime service")
 
 	opts := []cni.Opt{
-		cni.WithInterfacePrefix(config.IfPrefix),
-		cni.WithAllConf,
-		cni.WithLoNetwork}
+		cni.WithLoNetwork,
+		cni.WithAllConf}
 
-	cni, err := cni.New()
+	initopts := []cni.Opt {
+		cni.WithMinNetworkCount(2),
+		cni.WithInterfacePrefix(config.IfPrefix),
+	}
+
+	cni, err := cni.New(initopts...)
 
 	if err != nil {
 		return nil, err
@@ -63,8 +67,6 @@ func NewKniService(config *KNIConfig) (beta.KNIServer, error) {
 
 		return nil
 	})
-
-	kni.c.Load(opts...)
 
 	sync, err := newCNINetConfSyncer("/etc/cni/net.d", cni, opts)
 
@@ -125,6 +127,13 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 			return nil, err
 		}
 	}
+
+	cniResult, err := json.Marshal(res)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Infof("CNI Result: %s", string(cniResult))
 
 	store := attachStore{
 		IP:          make(map[string]*beta.IPConfig),
@@ -329,6 +338,10 @@ func (k *KniService) SetupMultipleNetworks(ctx context.Context, req *beta.Attach
 	x := extractNetworks(req.Annotations)
 
 	appendDefaultCNINetworks(&x, k.c)
+
+	for _, v := range x {
+		log.Infof("setting up network: %s", v.NetworkName)
+	}
 
 	networks, err := k.c.BuildMultiNetwork(x)
 
