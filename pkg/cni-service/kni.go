@@ -28,11 +28,15 @@ func NewKniService(ifprefix, dbname string) (beta.KNIServer, error) {
 	log.Info("starting kni network runtime service")
 	
 	opts := []cni.Opt{
+	cni.WithLoNetwork,
+	cni.WithDefaultConf}
+
+	initopts := []cni.Opt {
+		cni.WithMinNetworkCount(2),
 		cni.WithInterfacePrefix(ifprefix),
-		 cni.WithDefaultConf,
-		 cni.WithLoNetwork} 
+	}
 	
-	cni, err := cni.New()
+	cni, err := cni.New(initopts...)
 
 	if err != nil {
 		return nil, err
@@ -55,8 +59,6 @@ func NewKniService(ifprefix, dbname string) (beta.KNIServer, error) {
 
 		return nil
 	})
-
-	kni.c.Load(opts...)
 
 	sync, err := newCNINetConfSyncer("/etc/cni/net.d", cni, opts)
 
