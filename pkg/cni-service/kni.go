@@ -219,7 +219,7 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 		}
 
 		if k.config.UseMultiNet {
-			err = k.RemoveMultipleNetworks(ctx, req)
+			err = k.RemoveMultipleNetworks(ctx,req, data.Annotations["netns"])
 
 			if err != nil {
 				log.Errorf("unable to execute CNI DEL: %s", err.Error())
@@ -343,6 +343,14 @@ func (k *KniService) SetupMultipleNetworks(ctx context.Context, req *beta.Attach
 		log.Infof("setting up network: %s", v.NetworkName)
 	}
 
+	bytes, err := json.Marshal(x)
+
+	if err != nil {
+		return nil, err
+	}
+
+	log.Infof("setting up network with: %s", string(bytes))
+
 	networks, err := k.c.BuildMultiNetwork(x)
 
 	if err != nil {
@@ -360,7 +368,7 @@ func (k *KniService) SetupMultipleNetworks(ctx context.Context, req *beta.Attach
 	return res, nil
 }
 
-func (k *KniService) RemoveMultipleNetworks(ctx context.Context, req *beta.DetachNetworkRequest) error {
+func (k *KniService) RemoveMultipleNetworks(ctx context.Context, req *beta.DetachNetworkRequest, netns string) error {
 	x := extractNetworks(req.Annotations)
 
 	appendDefaultCNINetworks(&x, k.c)
@@ -373,7 +381,7 @@ func (k *KniService) RemoveMultipleNetworks(ctx context.Context, req *beta.Detac
 
 	opts := []cni.NamespaceOpts{}
 
-	err = k.c.RemoveNetworks(ctx, req.Id, req.Annotations["netns"], networks, opts...)
+	err = k.c.RemoveNetworks(ctx, req.Id, netns, networks, opts...)
 
 	if err != nil {
 		return nil
