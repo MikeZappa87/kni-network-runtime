@@ -39,7 +39,7 @@ func main() {
 	flag.StringVar(&sockAddr, "address", "/tmp/kni.sock", "socket address")
 	flag.StringVar(&ifprefix, "ifprefix", "eth", "interface prefix")
 	flag.StringVar(&dbname, "dbname", "net.db", "boltdb file name")
-	flag.BoolVar(&UseMultiNet, "usemultinet", true, "use multi network features")
+	flag.BoolVar(&UseMultiNet, "usemultinet", false, "use multi network features")
 
 	flag.Parse()
 
