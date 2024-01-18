@@ -7,15 +7,16 @@ import (
 )
 
 func appendDefaultCNINetworks(net *[]*cni.NetworkInterface, plugin cni.CNI) {
-	*net = append(*net, &cni.NetworkInterface{
-		NetworkName:   "cni-loopback",
-		InterfaceName: "lo",
-	},
+	*net = append([]*cni.NetworkInterface{
+		&cni.NetworkInterface{
+			NetworkName:   "cni-loopback",
+			InterfaceName: "lo",
+		},
 		&cni.NetworkInterface{
 			InterfaceName: "eth0",
 			//Index 0 and 1 should always be here
 			NetworkName: plugin.GetConfig().Networks[1].Config.Name,
-		})
+		}}, *net...)
 }
 
 func extractNetworks(annotations map[string]string) []*cni.NetworkInterface {
