@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Build
-RUN CGO_ENABLED=0 go build -o /network-runtime cmd/server/server.go
+RUN CGO_ENABLED=0 go build -o /usr/bin/network-runtime cmd/server/server.go
 
 # Run
-CMD ["/network-runtime"]
+CMD ["/usr/bin/network-runtime"]
