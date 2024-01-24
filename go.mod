@@ -3,7 +3,7 @@ module github.com/mikezappa87/kni-network-runtime
 go 1.21.5
 
 require (
-	github.com/MikeZappa87/kni-api v0.0.5
+	github.com/MikeZappa87/kni-api v0.0.6
 	github.com/containerd/go-cni v1.1.9
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/sirupsen/logrus v1.9.3
