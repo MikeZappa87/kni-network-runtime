@@ -27,6 +27,7 @@ type KniService struct {
 type attachStore struct {
 	IP          map[string]*beta.IPConfig
 	Annotations map[string]string
+	Extradata   map[string]string
 }
 
 const PodBucket = "pod"
@@ -38,7 +39,7 @@ func NewKniService(config *KNIConfig) (beta.KNIServer, error) {
 		cni.WithLoNetwork,
 		cni.WithAllConf}
 
-	initopts := []cni.Opt {
+	initopts := []cni.Opt{
 		cni.WithMinNetworkCount(2),
 		cni.WithInterfacePrefix(config.IfPrefix),
 	}
@@ -96,22 +97,22 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 		cni.WithLabels(req.Extradata),
 	}
 
-	if req.Isolation == nil {
-		return &beta.AttachNetworkResponse{}, nil
+	if cgroup := req.Extradata["cgroupPath"]; cgroup != "" {
+		opts = append(opts, cni.WithCapabilityCgroupPath(cgroup))
+		log.Infof("cgroup: %s", cgroup)
 	}
 
-	if req.Isolation.Path != "" {
-		log.Infof("pod annotation id: %s netns: %s\n", req.Id, req.Isolation.Path)
-	} else {
-		log.Info("no network namespace path, this is either a bug or its running in the root")
-		return &beta.AttachNetworkResponse{}, nil
+	if _, ok := req.Extradata["netns"]; !ok {
+		return nil, fmt.Errorf("pod annotation id: %s has no netns", req.Id)
 	}
+
+	netns := req.Extradata["netns"]
 
 	var res *cni.Result
 	var err error
 
 	if k.config.UseMultiNet {
-		res, err = k.SetupMultipleNetworks(ctx, req)
+		res, err = k.SetupMultipleNetworks(ctx, req, netns)
 
 		if err != nil {
 			log.Errorf("unable to execute CNI ADD: %s", err.Error())
@@ -119,7 +120,7 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 			return nil, err
 		}
 	} else {
-		res, err = k.c.SetupSerially(ctx, req.Id, req.Isolation.Path, opts...)
+		res, err = k.c.SetupSerially(ctx, req.Id, netns, opts...)
 
 		if err != nil {
 			log.Errorf("unable to execute CNI ADD: %s", err.Error())
@@ -138,6 +139,7 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 	store := attachStore{
 		IP:          make(map[string]*beta.IPConfig),
 		Annotations: map[string]string{},
+		Extradata:   map[string]string{},
 	}
 
 	ip := make(map[string]*beta.IPConfig)
@@ -152,6 +154,7 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 		}
 	}
 
+	store.Extradata = req.Extradata
 	store.Annotations = req.Annotations
 	store.IP = ip
 
@@ -218,8 +221,15 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 			return err
 		}
 
+		if cgroup := data.Extradata["cgroupPath"]; cgroup != "" {
+			opts = append(opts, cni.WithCapabilityCgroupPath(cgroup))
+			log.Infof("cgroup: %s", cgroup)
+		}
+
+		netns := data.Extradata["netns"]
+
 		if k.config.UseMultiNet {
-			err = k.RemoveMultipleNetworks(ctx,req, data.Annotations["netns"])
+			err = k.RemoveMultipleNetworks(ctx, req, netns)
 
 			if err != nil {
 				log.Errorf("unable to execute CNI DEL: %s", err.Error())
@@ -227,7 +237,7 @@ func (k *KniService) DetachNetwork(ctx context.Context, req *beta.DetachNetworkR
 				return err
 			}
 		} else {
-			err = k.c.Remove(ctx, req.Id, data.Annotations["netns"], opts...)
+			err = k.c.Remove(ctx, req.Id, netns, opts...)
 
 			if err != nil {
 				log.Errorf("unable to execute CNI DEL: %s", err.Error())
@@ -334,7 +344,7 @@ func (k *KniService) QueryNodeNetworks(ctx context.Context, req *beta.QueryNodeN
 	}, nil
 }
 
-func (k *KniService) SetupMultipleNetworks(ctx context.Context, req *beta.AttachNetworkRequest) (*cni.Result, error) {
+func (k *KniService) SetupMultipleNetworks(ctx context.Context, req *beta.AttachNetworkRequest, netns string) (*cni.Result, error) {
 	x := extractNetworks(req.Annotations)
 
 	appendDefaultCNINetworks(&x, k.c)
@@ -359,7 +369,7 @@ func (k *KniService) SetupMultipleNetworks(ctx context.Context, req *beta.Attach
 
 	opts := []cni.NamespaceOpts{}
 
-	res, err := k.c.SetupNetworks(ctx, req.Id, req.Isolation.Path, networks, opts...)
+	res, err := k.c.SetupNetworks(ctx, req.Id, netns, networks, opts...)
 
 	if err != nil {
 		return nil, err
