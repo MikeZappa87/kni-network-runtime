@@ -90,16 +90,11 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 
 	log.Infof("attach rpc request for id %s", req.Id)
 
-	opts := []cni.NamespaceOpts{
-		cni.WithArgs("IgnoreUnknown", "1"),
-		cni.WithLabels(req.Labels),
-		cni.WithLabels(req.Annotations),
-		cni.WithLabels(req.Extradata),
-	}
+	opts, err := cniNamespaceOpts(req.Id, req.Name, req.Namespace, "", req.Labels,
+	 req.Annotations, req.Extradata, req.PortMappings, req.DnsConfig)
 
-	if cgroup := req.Extradata["cgroupPath"]; cgroup != "" {
-		opts = append(opts, cni.WithCapabilityCgroupPath(cgroup))
-		log.Infof("cgroup: %s", cgroup)
+	 if err != nil {
+		return nil, err
 	}
 
 	if _, ok := req.Extradata["netns"]; !ok {
@@ -109,7 +104,6 @@ func (k *KniService) AttachNetwork(ctx context.Context, req *beta.AttachNetworkR
 	netns := req.Extradata["netns"]
 
 	var res *cni.Result
-	var err error
 
 	if k.config.UseMultiNet {
 		res, err = k.SetupMultipleNetworks(ctx, req, netns)

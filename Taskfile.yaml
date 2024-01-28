@@ -7,3 +7,6 @@ tasks:
   build-server:
     cmds:
       - CGO_ENABLED=0 go build -o ./bin/network-runtime cmd/server/server.go
+  build-docker:
+    cmds:
+      - docker build -t kni-network-runtime:latest -f Dockerfile .
