@@ -3,10 +3,10 @@ version: "3"
 tasks:
   run-server:
     cmds:
-      - go run cmd/server/server.go -cmd "cni"
+      - go run main.go
   build-server:
     cmds:
-      - CGO_ENABLED=0 go build -o ./bin/network-runtime cmd/server/server.go
+      - CGO_ENABLED=0 go build -o ./bin/network-runtime main.go
   build-docker:
     cmds:
       - docker build -t kni-network-runtime:latest -f Dockerfile .

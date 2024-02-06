@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Build
-RUN CGO_ENABLED=0 go build -o /usr/bin/network-runtime cmd/server/server.go
+RUN CGO_ENABLED=0 go build -o /usr/bin/network-runtime main.go
 
 ARG CNI_PLUGINS_VERSION="v1.3.0"
 ARG CNI_PLUGINS_CLONE_URL="https://github.com/containernetworking/plugins"
