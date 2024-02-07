@@ -3,14 +3,14 @@ module github.com/mikezappa87/kni-network-runtime
 go 1.21.5
 
 require (
-	github.com/MikeZappa87/libkni v0.1.0
+	github.com/MikeZappa87/libkni v0.0.1
 	github.com/sirupsen/logrus v1.9.3
 )
 
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Microsoft/hcsshim v0.11.4 // indirect
-	github.com/MikeZappa87/kni-api v0.0.7-0.20240201220129-cdea46f36b48 // indirect
+	github.com/MikeZappa87/kni-api v0.0.8 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/containerd v1.7.13 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
