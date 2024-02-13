@@ -3,7 +3,7 @@ module github.com/mikezappa87/kni-network-runtime
 go 1.21.5
 
 require (
-	github.com/MikeZappa87/libkni v0.2.0
+	github.com/MikeZappa87/libkni v0.2.1
 	github.com/sirupsen/logrus v1.9.3
 )
 

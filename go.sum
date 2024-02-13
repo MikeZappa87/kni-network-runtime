@@ -1,9 +1,7 @@
 github.com/MikeZappa87/kni-api v0.0.8 h1:rO7q4fY2ouG65dsPPvGMysCvPgOKjPgj/fMJiCf9p7A=
 github.com/MikeZappa87/kni-api v0.0.8/go.mod h1:5A4mnixcyfsk8Xuw7awf5zbxig+GZGiopArrtLNbE08=
-github.com/MikeZappa87/libkni v0.1.1-0.20240210022624-31a8eca0e9a4 h1:Ym9rlaHWpra2lfbvNszlC4F/HPBB0KjTOyE9ilv+Bm8=
-github.com/MikeZappa87/libkni v0.1.1-0.20240210022624-31a8eca0e9a4/go.mod h1:5WyKlDv7g8kGN9t6AxSSwU60uDmds/nfdKcG1Rf+jU8=
-github.com/MikeZappa87/libkni v0.2.0 h1:PORR3t/wf9MqT3vCHv5Sw1OqH94uhuWtxlWCIALpUeQ=
-github.com/MikeZappa87/libkni v0.2.0/go.mod h1:5WyKlDv7g8kGN9t6AxSSwU60uDmds/nfdKcG1Rf+jU8=
+github.com/MikeZappa87/libkni v0.2.1 h1:yZ262mCNjfAr8GdnJnUe+9FtXG9xL0QLOMiTmi1bQx0=
+github.com/MikeZappa87/libkni v0.2.1/go.mod h1:5WyKlDv7g8kGN9t6AxSSwU60uDmds/nfdKcG1Rf+jU8=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
